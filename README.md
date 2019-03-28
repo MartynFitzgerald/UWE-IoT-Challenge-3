@@ -17,14 +17,6 @@ This is a diagram that shows our system implementation and how it runs.
 ![Finite State Diagram PNG](Finite State Diagram.jpeg)
 </div>
 
-## Transition Table
-
-This is a table that shows what state our finite sate machine will move to, based on our current state and the inputs.
-
-<div align="center">
-![Transition Table PNG](transition_table_iot_challenge_two-1.jpg)
-</div>
-
 ## Software Used
 
 * Ubuntu 16.04 LTS
