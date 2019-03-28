@@ -1,4 +1,18 @@
-<!DOCTYPE html>
+<!--=============================================================================
+ |      Editors:  Martyn Fitzgerald - 16025948
+ |                Dawid Koleczko    - 17024154
+ |
+ |  Module Code:  UFCFVK-15-2
+ | Module Title:  Internet Of Things
+ |
+ |   Instructor:  Benedict R. Gaster
+ |     Due Date:  29/03/2019
+ |
+ |  Description: This is our implementation of a bluetooth communication protocol
+ |               that transmits the accelerometer data 
+ |
+ *===========================================================================-->
+ <!DOCTYPE html>
 <head>
     <!-- Bootstrap js -->
     <script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
@@ -8,117 +22,472 @@
     <script>
     var API_X;
     var API_Y;
-
+    var API_Z;
+    var API_PITCH;
+    var API_ROLL;
+	/*
+		Calls the function every 500 milliseconds.
+	*/
     function getJsonData() {
         $.ajax({                       
             url: "http://127.0.0.1:3000/api",
             type: 'get',
             cache: false,
-            success: function (data) {
+            success: function (data) 
+			{
+				/*
+					Setting the data to varibles outside of the ajax get function.
+				*/
                 API_X = data["X"];
                 API_Y = data["Y"];
-
-
+                API_Z = data["Z"];
+				API_PITCH = data["PITCH"];
+				API_ROLL = data["ROLL"];
+				/*
+					Setting the data to the html elements.
+				*/
                 document.getElementById("x").innerHTML = `X : ${data["X"]}`;
                 document.getElementById("y").innerHTML = `Y : ${data["Y"]}`;
                 document.getElementById("z").innerHTML = `Z : ${data["Z"]}`;
+				document.getElementById("pitch").innerHTML = `PITCH : ${data["PITCH"].toFixed(2)}`;
+				document.getElementById("roll").innerHTML = `ROLL : ${data["ROLL"].toFixed(2)}`;
             },
-            error: function() { 
+            error: function() 
+			{ 
              console.log("API request has a error (Can't Get Data)");
             }   
-        });       
+        });
+        
     }
-   
-    window.setInterval(getJsonData, 500); /* this checks the flag every 100 milliseconds*/
-
+	/*
+		Calls the function every 500 milliseconds.
+	*/
+    window.setInterval(getJsonData, 500);
     </script>
     <style>
+		/*
+			Styling for the html elements
+		*/
         canvas {
-            border:1px solid #d3d3d3;
-            background-color: #f1f1f1;
+            background-color: #303030;
         }
+        body {
+            display: block;
+            margin: 0px;
+            overflow: hidden;
+        }
+        .info{
+            position:absolute;
+            background-color: rgba(33, 29, 29, 0.74);
+            right: 0;
+            top: 0;
+            width: 120px;
+            text-align: center;
+			font-family: cursive;
+			font-size: 12px;
+			padding:10px;
+			color:white;
+			border-radius: 0px 0px 0px 34px;			
+        }
+		#x{
+			color:cyan;
+		}
+		#y{
+			color:pink;
+		}
+		#z{
+			color:lime;
+		}
+		#speedY{
+			color:orange;
+		}
+		
+		#speedX{
+			color:red;
+		
+		}
+		#pitch{
+			color:purple;
+		
+		}
+		#roll{
+			color:yellow;
+		}
+		#game-over{
+	     display:none;
+		 position: absolute;
+		 background-color: rgba(33, 29, 29, 0.74);
+		 top: 0;
+		 height:100%;
+		 width:100%;
+		 text-align: center;
+		 font-family: cursive;
+		 font-size: 12px;
+		 padding: 10px;
+		 color: white;
+		}
+		
+		.show{
+			display: block !important;
+		}
+
+		button#reset {
+			color: white;
+			background-color: red;
+			border: none;
+			border-radius: 50%;
+			padding: 20px;
+			font-family: cursive;
+			cursor: pointer;
+		}
+		div#game-over_content {
+			padding-top:200px;
+			margin: 0;
+			
+		}
     </style>
 </head>
 <html>
+	<!-- This is the body that holds the game screen -->
     <body onload="startGame()">
         <script>
+			/*
+				Defining varibles for the start of the game.
+			*/
             var myGamePiece;
-            
-            function startGame() {
-                myGamePiece = new component(30, 30, "red", 750, 250);
+            var amountOfAI = 25;
+            var playersLives = 3;
+            var playersScore = 0;
+            var aiGamePieces = new Array();
+			/*
+				Function simply adding the AI to the game.
+			*/
+            function addAi(i)
+            {
+                var randomColor = '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6);
+
+                if (i > 20)
+                {
+                    var randomRadius = (Math.random() * 20) + 10;
+                }
+                else
+                {
+                    var randomRadius = (Math.random() * 9) + 2;
+                }
+
+                aiGamePieces[i] = new component(randomRadius, randomRadius, randomColor, (Math.random() * (window.innerWidth - 130) + 65), (Math.random() * (window.innerHeight - 130)) + 65);
+
+            }
+			/*
+				Function starting the game. creating the player and calling functions to start the game.
+			*/
+            function startGame() 
+            {
+                myGamePiece = new player(30, 30, "red", window.innerWidth / 2, window.innerHeight / 2);
+
+                for(var i = 0; i < amountOfAI; i++)
+                {
+                    addAi(i);
+                }
+				
                 myGameArea.start();
             }
-            
+			/*
+				Function checking the player speed to the accelerometer and sends back the speed value. 
+			*/
+            function checkSpeed(API_Value, speed)
+            {
+                if (API_Value == undefined)
+                {
+                    API_Value = 0;
+                }
+                else if (API_Value < -0.25)
+                {
+                    if (speed > 0.05)
+                    {
+                        speed = 0;
+                    }
+                    if (speed > -2.4)
+                    {
+                        speed -= .25;
+                    }
+                }
+                else if (API_Value > 0.25)
+                {
+                    if (speed < -0.05)
+                    {
+                        speed = 0;
+                        return speed;
+                    }
+                    if (speed < 2.4)
+                    {
+                        speed += .25;
+                    }
+                }
+                else
+                {
+                    speed = 0;
+                }
+                return speed;
+            }
+			/*
+				Function checking if circle A is inside circle B. 
+			*/
+            function isInsideAnother(x, y, radius, circle_x, circle_y)
+            {
+                if ((x - circle_x) * (x - circle_x) + (y - circle_y) * (y - circle_y) <= radius * radius)
+                {
+                    return true;
+                }
+                else
+                {   
+					
+                    return false;
+                }
+            }
+			/*
+				Object holding all the factors of the game area.
+			*/
             var myGameArea = {
                 canvas : document.createElement("canvas"),
-                start : function() {
-                    this.canvas.width = 1500;
-                    this.canvas.height = 500;
+                start : function() 
+                {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+    
                     this.context = this.canvas.getContext("2d");
                     document.body.insertBefore(this.canvas, document.body.childNodes[0]);
                     this.interval = setInterval(updateGameArea, 20);
                 },
-                clear : function() {
+                clear : function() 
+                {
                     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 }
             }
-            
-            function component(width, height, color, x, y) {
+			/*
+				Function to create the player and inner functions to do checks.
+			*/
+            function player(width, height, color, x, y) 
+            {
                 this.width = width;
                 this.height = height;
+                this.radius = 10;
                 this.speedX = 0;
                 this.speedY = 0;
                 this.x = x;
                 this.y = y;    
-                this.update = function() {
+                this.update = function() 
+                {
                     ctx = myGameArea.context;
-                    ctx.fillStyle = color;
-                    ctx.fillRect(this.x, this.y, this.width, this.height);
+					ctx.beginPath();
+					ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+					ctx.fillStyle = color;
+                    ctx.fill();
+                }
+                this.eat = function()
+                {
+                    for(var i = 0; i < amountOfAI; i++)
+                    {
+					    // If something hits the player
+                        if (Math.sqrt(Math.pow((aiGamePieces[i].x - this.x), 2) + Math.pow((aiGamePieces[i].y - this.y), 2)) < this.radius) 
+                        {
+                            if (this.radius > aiGamePieces[i].radius)
+                            {
+                                ctx = myGameArea.context;
+                                ctx.globalCompositeOperation = 'destination-over';
+								
+								
+                            }
+                        }
+                        
+                        // If a circle is inside of the player
+                        if (isInsideAnother(this.x, this.y, this.radius, aiGamePieces[i].x, aiGamePieces[i].y))
+                        {
+                            if (this.radius > aiGamePieces[i].radius)
+                            {
+                                if (this.radius < 250)
+                                {
+                                    this.radius = this.radius += (aiGamePieces[i].radius / 4);
+                                }
+
+                                playersScore += (aiGamePieces[i].radius / 4);
+
+                                addAi(i);
+                            }
+                        }
+						
+                    }    
                 }
                 this.newPos = function() 
                 {
-                    if (API_X > 0)
+                    this.speedX = checkSpeed(API_X, this.speedX);
+                    this.speedY = checkSpeed(API_Y, this.speedY);
+
+                    if (this.x + this.speedX > myGameArea.canvas.width - this.radius || this.x + this.speedX  < this.radius) 
                     {
-                        this.x += 1;
+                        this.speedX = -this.speedX;
                     }
-                    else if (API_X < 0)
+                    if (this.y + this.speedY > myGameArea.canvas.height - this.radius || this.y + this.speedY < this.radius) 
                     {
-                        this.x -= 1;
+                        this.speedY = -this.speedY;
                     }
+
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.update();
+                    this.eat();
+   
+                }
+            }
+			/*
+				Function to create the AI and inner functions to do checks.
+			*/
+            function component(width, height, color, x, y) 
+            {
+                this.width = width;
+                this.height = height;
+                this.radius = width + height;
+                this.speedX = (Math.random() * 5) - 2.5;
+                this.speedY = (Math.random() * 5) - 2.5;
+                this.x = x;
+                this.y = y;    
+                this.update = function() 
+                {
+                    ctx = myGameArea.context;
                     
-                    if (API_Y > 0)
+					ctx.beginPath();
+					ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+					ctx.fillStyle = color;
+					ctx.strokeStyle = "rgb( 0, 0, 255 )";
+					ctx.fill();
+                }
+                this.eat = function()
+                {
+                    for(var i = 0; i < amountOfAI; i++)
                     {
-                        this.y -= 1;
+					    // If something hits the AI
+                        if (Math.sqrt(Math.pow((aiGamePieces[i].x - this.x), 2) + Math.pow((aiGamePieces[i].y - this.y), 2)) < this.radius) 
+                        {
+                            if (this.radius > aiGamePieces[i].radius)
+                            {
+                                ctx = myGameArea.context;
+                                ctx.globalCompositeOperation = 'destination-over';
+                            }
+                        }
+                        
+                        // If a circle is inside the AI
+                        if (isInsideAnother(this.x, this.y, this.radius, aiGamePieces[i].x, aiGamePieces[i].y))
+                        {
+                            if (this.radius > aiGamePieces[i].radius)
+                            {
+                                if (this.radius < 200)
+                                {
+                                    this.radius = this.radius += (aiGamePieces[i].radius / 4);
+                                }
+                                addAi(i);
+                            }	
+                        }
+                        // If the player is inside the AI
+                        if (isInsideAnother(this.x, this.y, this.radius, myGamePiece.x, myGamePiece.y))
+                        {
+                            if (this.radius > myGamePiece.radius)
+                            {
+                                playersLives -= 1;
+                                
+                                myGamePiece = new player(30, 30, "red", window.innerWidth / 2, window.innerHeight / 2);
+
+                            }	
+                        }
+                    }    
+                }
+                this.newPos = function() 
+                {   
+                    if (this.x + this.speedX > myGameArea.canvas.width - this.radius || this.x + this.speedX  < this.radius) 
+                    {
+                        this.speedX = -this.speedX;
                     }
-                    else if (API_Y < 0)
+                    if (this.y + this.speedY > myGameArea.canvas.height - this.radius || this.y + this.speedY < this.radius) 
                     {
-                        this.y += 1;
-                    }     
+                        this.speedY = -this.speedY;
+                    }
+
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.update();
+                    this.eat();
                 }    
             }
-            
-            function updateGameArea() 
-            {
+			/*
+				Function to keep checking if the player lives are below 1 and if so then show ending screen. 
+			*/
+            function checkEndGame()
+            {	
+                if (playersLives <= 0)
+                {
+                    window.history.replaceState(null, null, "http://127.0.0.1:3000/?score=" + playersScore.toFixed(0));
 
-                if (API_X == undefined)
-                {
-                    API_X = 0;
-                }
-                if (API_Y == undefined)
-                {
-                    API_Y = 0;
-                }
+                    //window.location.href = "http://127.0.0.1:3000/?score=" + playersScore.toFixed(0);
+                    myGameArea.clear();	
+                    delete aiGamePieces;		
+					var element =document.getElementById("game-over");
+                    element.classList.add("show");	
+				
+                    document.getElementById("1").style.display = 'none';
+				}
+			}
+			/*
+				Function to reset the game once press "play again".
+			*/
+            function reset()
+            {
+                window.location.href = "http://127.0.0.1:3000";
+            }
+			/*
+				Function update the game area all the time. This updates all AI position and Player position
+				as well as that it keeps the text up too date.
+			*/
+            function updateGameArea() 
+            {   
                 myGameArea.clear();
                 myGamePiece.newPos();    
-                myGamePiece.update();
                 
+                document.getElementById("speedX").innerHTML = `SPEED X : ${myGamePiece.speedX}`;
+                document.getElementById("speedY").innerHTML = `SPEED Y : ${myGamePiece.speedY}`;                                
+				document.getElementById("score").innerHTML = `SCORE : ${(playersScore).toFixed(0)}`;
+				document.getElementById("score2").innerHTML = `SCORE : ${(playersScore).toFixed(0)}`;            				
+				document.getElementById("lives").innerHTML = `LIVES : ${playersLives}`;
+
+                for(var i = 0; i < amountOfAI; i++)
+                {
+                    aiGamePieces[i].newPos();    
+                }
+                
+                checkEndGame();
             }
             
         </script>
-
-    <h1>Accelerometer Data</h1>
-    <h3 id="x">X : 0</h3>
-    <h3 id="y">Y : 0</h3>
-    <h3 id="z">Z : 0</h3>
+		<!-- This is the div that holds the score on the top right side of the page -->
+        <div id="1" class="info">
+            <h1>Data</h1>
+            <h3 id="x">X : 0</h3>
+            <h3 id="y">Y : 0</h3>
+            <h3 id="z">Z : 0</h3>
+            <h3 id="pitch">PITCH : 0</h3>
+            <h3 id ="roll">ROLL : 0</h3>
+            <hr/>
+            <h3 id="speedX">SPEED X : 0</h3>
+            <h3 id="speedY">SPEED Y : 0</h3>
+            <h4 id ="score">SCORE : 0</h3>
+            <h4 id ="lives">LIVES : 0</h3>
+        </div>
+		<!-- This is the div that holds the game over screen -->
+		<div id="game-over">
+			<div id="game-over_content">
+				<h1>GAME OVER</h1>
+                <h2 id="score2">Score</h2>
+                
+				<button id="reset" onclick="reset()">Play Again</button>
+			</div>
+		</div>
     </body>
 </html>
