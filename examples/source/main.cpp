@@ -85,7 +85,7 @@ int main()
     new MicroBitAccelerometerService(*uBit.ble, uBit.accelerometer);
     //new MicroBitButtonService(*uBit.ble);
     //new MicroBitIOPinService(*uBit.ble, uBit.io);
-    //new MicroBitLEDService(*uBit.ble, uBit.display);
+    new MicroBitLEDService(*uBit.ble, uBit.display);
     //new MicroBitMagnetometerService(*uBit.ble, uBit.compass);
     //new MicroBitTemperatureService(*uBit.ble, uBit.thermometer);
 
